@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies if required for ChromaDB / SQLite build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend application code and sample data
+COPY app/ ./app/
+COPY data/ ./data/
+
+# Environment variables defaults
+ENV PYTHONUNBUFFERED=1
+ENV CHROMA_PERSIST_DIR=/app/chroma_db
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
