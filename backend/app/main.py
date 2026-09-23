@@ -57,9 +57,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Hasamex Expert Call Transcript Analyzer", lifespan=lifespan)
 
 
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://assignment-hass-fqb3.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
+    allow_origins=origins,
+    allow_origin_regex=r"https://assignment-hass-.*\.vercel\.app",  # Matches preview & branch deployments on Vercel
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
