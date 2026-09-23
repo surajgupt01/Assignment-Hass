@@ -90,9 +90,24 @@ def get_reports():
 
 @app.get("/api/synthesis", response_model=Optional[CrossExpertSynthesis])
 def get_synthesis():
-    if not STATE["synthesis"] and len(STATE["reports"]) >= 2:
-        STATE["synthesis"] = generate_synthesis(list(STATE["reports"].values()))
-    return STATE["synthesis"]
+    global STATE
+    # If synthesis is already computed, return it directly
+    if STATE.get("synthesis"):
+        return STATE["synthesis"]
+
+    reports_list = list(STATE.get("reports", {}).values())
+    
+    # If fewer than 2 reports are loaded, return null safely without throwing 500
+    if len(reports_list) < 2:
+        return None
+
+    try:
+        synthesis = generate_synthesis(reports_list)
+        STATE["synthesis"] = synthesis
+        return synthesis
+    except Exception as e:
+        print(f"[ERROR] Failed to dynamically generate synthesis: {e}")
+        return None
 
 @app.post("/api/qa", response_model=QAResponse)
 def ask_question(request: QARequest):

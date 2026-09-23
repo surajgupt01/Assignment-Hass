@@ -80,7 +80,7 @@ Questions:
 
     data = clean_json_response(response.text)
 
-    # Hallucination Guard: Ensure quoted text exists verbatim
+  
     full_raw = " ".join([c["text"] for c in chunks])
     for ans in data.get("answers", []):
         valid = []
@@ -91,6 +91,9 @@ Questions:
         ans["citations"] = valid
 
     return ExpertReport(**data)
+
+
+
 def generate_synthesis(reports: List[ExpertReport]) -> CrossExpertSynthesis:
     reports_dump = [r.model_dump() for r in reports]
     prompt = f"""
@@ -127,16 +130,31 @@ Data:
 {json.dumps(reports_dump, indent=2)}
 """
 
-    raw_response = call_gemini_with_fallback(prompt)
-    data = clean_json(raw_response)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.0
+        )
+    )
 
-    # Alias normalization safeguard
+    data = clean_json_response(response.text)
+
+    # 1. Normalize top-level keys
     if "agreements" in data and "common_themes" not in data:
         data["common_themes"] = data.pop("agreements")
+    if "common_themes" not in data:
+        data["common_themes"] = []
+    if "disagreements" not in data:
+        data["disagreements"] = []
 
+    # 2. Normalize citation list keys inside items
     for section in ["common_themes", "disagreements"]:
         for item in data.get(section, []):
             if "citations" in item and "supporting_citations" not in item:
                 item["supporting_citations"] = item.pop("citations")
+            if "supporting_citations" not in item:
+                item["supporting_citations"] = []
 
     return CrossExpertSynthesis(**data)
